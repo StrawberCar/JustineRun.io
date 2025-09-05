@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Super Justine Speedrunning Hub</title>
+  <meta name="description" content="I honestly cant describe it" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#0e0d13; --panel:#14141b; --panel-2:#181824; --ink:#f2f3f7; --muted:#9aa3b2; --line:#232332;
+      --brand:#6aa7ff; --brand-2:#425bff; --gold:#ffd86b; --accent:#2bd4bd;
+    }
+
+    html, body { height: 100% }
+    body{
+      margin:0; color:var(--ink);
+      font: 15px/1.5 "Outfit", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial;
+      display:grid; grid-template-rows:auto 1fr; min-height:100dvh; background:var(--bg);
+    }
+
+    /* Header */
+    .topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+    .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 14px #425bff66}
+    h1{font-size:16px;margin:0;font-weight:800}
+    .tagline{color:var(--muted);font-size:12px}
+
+    /* Buttons */
+    .btn{font-weight:700;padding:10px 16px;border-radius:12px;border:1px solid var(--line);cursor:pointer;color:var(--ink);background:transparent;transition:transform .05s ease, filter .15s ease, background .15s ease}
+    .btn:hover{border-color:#2c2c3c;background:#1a1a26}
+    .btn:active{transform:translateY(1px)}
+    .btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+    .btn.ghost{background:transparent}
+    .btn.solid{background:linear-gradient(180deg,var(--brand),var(--brand-2));border-color:#2c3cff;color:#fff;box-shadow:0 8px 18px #2c3cff33}
+    .btn.solid:hover{filter:brightness(1.06)}
+
+    /* Layout */
+    .shell{display:grid;grid-template-columns:280px 1fr;min-height:0}
+    .sidebar{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+    .sidebar-header{padding:14px 14px 8px;color:var(--muted);font-weight:800;text-transform:uppercase;font-size:12px}
+    .game-list{overflow:auto;padding:6px 8px 18px;display:flex;flex-direction:column;gap:6px}
+    .game-item{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border:1px solid transparent;background:var(--panel-2); color:var(--ink)}
+    .game-item:hover{border-color:#2b2b3a}
+    .game-item.active{outline:2px solid #2e3cff}
+    .game-icon{width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid #22243a}
+    .game-title{font-weight:800;color:var(--ink)}
+    .game-meta{color:var(--muted);font-size:12px}
+
+    /* Content */
+    .content{min-width:0; min-height:0; display:flex; flex-direction:column}
+    .hero{position:relative; min-height:240px; display:grid; align-content:end; padding:18px; border-bottom:1px solid var(--line); background-size:cover; background-position:center}
+    .hero::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 0%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.75))}
+    .hero-inner{position:relative; z-index:1}
+    .crumbs{color:var(--muted); font-size:12px; margin-bottom:6px}
+    .game-heading{display:flex; align-items:flex-end; gap:12px}
+    .cover-thumb{width:72px; height:72px; border-radius:12px; object-fit:cover; border:1px solid #282a3e}
+    .title{font-size:26px; font-weight:900; margin:0}
+    .submeta{color:var(--muted); font-size:13px}
+
+    .section{padding:16px 18px}
+    .toolbar{display:flex; align-items:center; gap:10px; justify-content:space-between; margin-bottom:12px}
+    .section h2{font-size:14px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin:0}
+    select{background:#202233;border:1px solid var(--line);color:var(--ink);padding:8px 10px;border-radius:10px;font-size:14px}
+    select:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+    /* Leaderboard */
+    .runs{display:flex; flex-direction:column; gap:8px}
+    .run-row{display:grid; grid-template-columns:56px 1fr 140px auto; gap:12px; align-items:center; padding:12px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px}
+    .rank{width:46px;height:46px;display:grid;place-items:center;border-radius:10px;background:#151528;border:1px solid #23233a;color:#c7ccda;font-weight:900}
+    .who .name{font-weight:800}
+    .who .quote{color:var(--muted); font-size:12px}
+    .time{font-variant-numeric:tabular-nums; font-weight:900}
+    .badge{display:inline-flex; align-items:center; gap:6px; font-size:11px; text-transform:uppercase; letter-spacing:.6px; padding:6px 10px; border-radius:999px; border:1px solid #6b5407; background:#3d2d00; color:#ffe7a3}
+    .badge .dot{width:8px;height:8px;border-radius:50%; background:var(--gold)}
+    .empty{color:var(--muted); padding:16px; border:1px dashed var(--line); border-radius:10px; background:#14141f}
+
+    /* Modal */
+    .overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter: blur(2px); display:none; align-items:center; justify-content:center; z-index:50}
+    .overlay.show{display:flex}
+    .dialog{width:min(600px,95vw); background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:0 40px 120px rgba(0,0,0,.55)}
+    .dialog header{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px}
+    .dialog h3{margin:0; font-size:18px; font-weight:800}
+    .dialog .hint{color:var(--muted); font-size:13px; margin-bottom:14px}
+    .dialog .grid{display:grid; grid-template-columns:repeat(3, 110px) 1fr auto; gap:14px; align-items:end}
+    label{display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--muted)}
+    input{background:#202233; border:1px solid var(--line); color:var(--ink); padding:10px 12px; border-radius:10px; font-size:14px}
+    input::placeholder{color:#7c8190}
+    .dialog .grid .btn.solid{height:44px}
+
+    /* Responsive */
+    @media (max-width:980px){ .shell{grid-template-columns:220px 1fr} .run-row{grid-template-columns:40px 1fr 120px auto} .cover-thumb{display:none} }
+    @media (max-width:720px){ .shell{grid-template-columns:1fr} .sidebar{order:2} .content{order:1} .hero{min-height:180px} .run-row{grid-template-columns:28px 1fr auto; gap:10px} .time{justify-self:end} .rank{width:28px;height:28px;border-radius:6px;font-size:11px} }
+  </style>
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <div class="logo-dot" aria-hidden="true"></div>
+    <div>
+      <h1>The Super Justine Speedrunning Hub</h1>
+      <div class="tagline">Please for the sake of my sanity dont abuse this...</div>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:10px; align-items:center">
+      <button id="loginBtn" class="btn solid" aria-label="Log in with Discord">Log in with Discord</button>
+      <button id="logoutBtn" class="btn ghost" aria-label="Log out" style="display:none">Log out</button>
+      <div id="userChip" style="display:none; align-items:center; gap:10px">
+        <img id="userAvatar" alt="avatar" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--line);object-fit:cover"/>
+        <span id="userName" style="font-weight:800"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Game list">
+      <div class="sidebar-header">"Games"</div>
+      <div id="gameList" class="game-list" role="list"></div>
+    </aside>
+
+    <!-- Content -->
+    <section class="content" aria-live="polite">
+      <div class="hero">
+        <div class="hero-inner">
+          <div class="crumbs">Game • Leaderboard</div>
+          <div class="game-heading">
+            <img id="coverThumb" class="cover-thumb" alt="Cover thumbnail" />
+            <div>
+              <h2 id="gameTitle" class="title">—</h2>
+              <div id="gameMeta" class="submeta"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="toolbar">
+          <h2 style="margin:0">Leaderboard</h2>
+          <div style="display:flex;gap:10px;align-items:center">
+            <label style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px">Sort
+              <select id="sortSelect">
+                <option value="fastest" selected>Fastest first</option>
+                <option value="slowest">Slowest first</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+              </select>
+            </label>
+            <button id="openModalBtn" class="btn solid" aria-haspopup="dialog" aria-controls="submitOverlay">＋ Submit run</button>
+          </div>
+        </div>
+        <div id="runs" class="runs"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Submit Run Modal -->
+  <div id="submitOverlay" class="overlay" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="submitTitle">
+      <header>
+        <h3 id="submitTitle">Submit a run</h3>
+        <button id="closeModalBtn" class="btn ghost" aria-label="Close">✕</button>
+      </header>
+      <div class="hint">Your Discord name and avatar will be used automatically.</div>
+      <div class="grid">
+        <label>Minutes<input id="mMin" type="number" min="0" value="0"></label>
+        <label>Seconds<input id="mSec" type="number" min="0" max="59" value="00"></label>
+        <label>Centisecs<input id="mCs" type="number" min="0" max="99" value="00"></label>
+        <input id="mQuote" type="text" placeholder="Optional quote" />
+        <button id="modalSubmitBtn" class="btn solid">Submit Run</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    // -------- Data --------
+    const GAMES = [
+      {
+        id: 'SJW1',
+        title: 'Super Justine World 1',
+        banner: 'SJW1/Banner1.png',
+        icon:   'https://strawbercar.github.io/Super-Justine-World-1/Poster.png',
+        publisher: 'Strawber Car',
+        year: '3/SEP/2025',
+      },
+      {
+        id: 'SJW2',
+        title: 'Super Justine World 2',
+        banner: 'SJW2/Banner2.png',
+        icon:   'https://strawbercar.github.io/Super-Justine-World-1/Poster2.png',
+        publisher: 'Strawber Car',
+        year: '4/SEP/2025',
+      },
+    ];
+
+    // -------- Utilities --------
+    const fmtTime = (ms) => {
+      if (typeof ms !== 'number' || isNaN(ms) || ms < 0) return '—';
+      const m = Math.floor(ms/60000);
+      const s = Math.floor((ms%60000)/1000);
+      const cs = Math.floor((ms%1000)/10);
+      return `${m}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+    };
+
+    // -------- DOM Refs --------
+    const gameListEl   = document.getElementById('gameList');
+    const heroEl       = document.querySelector('.hero');
+    const titleEl      = document.getElementById('gameTitle');
+    const metaEl       = document.getElementById('gameMeta');
+    const coverThumbEl = document.getElementById('coverThumb');
+    const runsEl       = document.getElementById('runs');
+    const sortSelect   = document.getElementById('sortSelect');
+
+    // Modal Refs
+    const openModalBtn   = document.getElementById('openModalBtn');
+    const overlay        = document.getElementById('submitOverlay');
+    const closeModalBtn  = document.getElementById('closeModalBtn');
+    const mMin           = document.getElementById('mMin');
+    const mSec           = document.getElementById('mSec');
+    const mCs            = document.getElementById('mCs');
+    const mQuote         = document.getElementById('mQuote');
+    const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+
+    // Auth UI
+    const loginBtn   = document.getElementById('loginBtn');
+    const logoutBtn  = document.getElementById('logoutBtn');
+    const userChip   = document.getElementById('userChip');
+    const userAvatar = document.getElementById('userAvatar');
+    const userName   = document.getElementById('userName');
+
+    // -------- Supabase --------
+    const SUPABASE_URL = 'https://clfqkkkwmitzqwpbwopo.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsZnFra2t3bWl0enF3cGJ3b3BvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjg0MDMsImV4cCI6MjA3MjYwNDQwM30.5XCtkmNwIHIO9fliPoi10C6ns7ZR1o6pMMs6yBP2yHw';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let activeId = null;
+    let currentRuns = [];
+
+    // -------- Sidebar --------
+    function renderSidebar(){
+      gameListEl.innerHTML = '';
+      GAMES.forEach(g => {
+        const item = document.createElement('button');
+        item.className = 'game-item';
+        item.setAttribute('role','listitem');
+        item.dataset.id = g.id;
+        item.innerHTML = `
+          <img class="game-icon" src="${g.icon}" alt="${g.title} icon" />
+          <div>
+            <div class="game-title">${g.title}</div>
+            <div class="game-meta">${g.publisher ?? ''}${g.year ? ' • '+g.year : ''}</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>`;
+        item.addEventListener('click', () => selectGame(g.id));
+        gameListEl.appendChild(item);
+      });
+    }
+
+    // -------- Content --------
+    async function selectGame(id){
+      activeId = id;
+      document.querySelectorAll('.game-item').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+      const game = GAMES.find(g => g.id === id); if(!game) return;
+
+      heroEl.style.backgroundImage = `url("${game.banner}")`;
+      titleEl.textContent = game.title;
+      metaEl.textContent  = [game.publisher, game.year].filter(Boolean).join(' • ');
+      coverThumbEl.src = game.icon;
+      coverThumbEl.alt = `${game.title} cover`;
+
+      await loadRunsForGame(id);
+    }
+
+    async function loadRunsForGame(gameId){
+      runsEl.innerHTML = '<div class="empty">Loading leaderboard…</div>';
+      const { data, error } = await supabase
+        .from('runs')
+        .select('*')
+        .eq('game_id', gameId)
+        .limit(200);
+
+      if(error){
+        runsEl.innerHTML = `<div class="empty">Failed to load runs: ${error.message}</div>`;
+        return;
+      }
+      currentRuns = data || [];
+      renderRuns();
+    }
+
+    function renderRuns(){
+      runsEl.innerHTML = '';
+      if(!currentRuns.length){
+        runsEl.innerHTML = '<div class="empty">No verified runs yet — be the first to submit a time!</div>';
+        return;
+      }
+      const mode = sortSelect.value;
+      const runs = [...currentRuns];
+      if(mode === 'fastest') runs.sort((a,b)=>a.time_ms - b.time_ms);
+      if(mode === 'slowest') runs.sort((a,b)=>b.time_ms - a.time_ms);
+      if(mode === 'newest')  runs.sort((a,b)=>new Date(b.created_at) - new Date(a.created_at));
+      if(mode === 'oldest')  runs.sort((a,b)=>new Date(a.created_at) - new Date(b.created_at));
+      const bestTime = runs.length ? Math.min(...runs.map(r=>r.time_ms)) : null;
+
+      runs.forEach((run, idx) => {
+        const row  = document.createElement('div'); row.className = 'run-row';
+        const rank = document.createElement('div'); rank.className = 'rank'; rank.textContent = (idx+1).toString();
+
+        const who  = document.createElement('div'); who.className = 'who';
+        const name = document.createElement('div'); name.className = 'name';  name.textContent = run.name || 'Unknown Runner';
+        const quote= document.createElement('div'); quote.className= 'quote'; quote.textContent = run.quote || '';
+        who.appendChild(name); if(run.quote) who.appendChild(quote);
+
+        const time = document.createElement('div'); time.className = 'time'; time.textContent = fmtTime(run.time_ms);
+
+        const right = document.createElement('div');
+        right.style.display='flex'; right.style.alignItems='center'; right.style.gap='10px'; right.style.justifySelf='end';
+        if(run.avatar_url){
+          const img = document.createElement('img');
+          img.src = run.avatar_url; img.alt = `${run.name} avatar`;
+          img.style.width='28px'; img.style.height='28px'; img.style.borderRadius='50%'; img.style.border='1px solid var(--line)';
+          img.referrerPolicy = 'no-referrer';
+          right.appendChild(img);
+        }
+        if(bestTime!==null && run.time_ms===bestTime){
+          const badge = document.createElement('span'); badge.className='badge'; badge.innerHTML='<span class="dot"></span> World Record';
+          right.appendChild(badge);
+        }
+
+        row.appendChild(rank); row.appendChild(who); row.appendChild(time); row.appendChild(right);
+        runsEl.appendChild(row);
+      });
+    }
+
+    // -------- Auth + Modal --------
+    async function refreshAuthUI(){
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user || null;
+      if(user){
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = '';
+        userChip.style.display = 'flex';
+        const meta = user.user_metadata || {};
+        userName.textContent = meta.full_name || meta.name || user.email || 'Runner';
+        const avatar = meta.avatar_url || meta.picture || '';
+        if(avatar){ userAvatar.src = avatar; userAvatar.referrerPolicy = 'no-referrer'; }
+      } else {
+        loginBtn.style.display = '';
+        logoutBtn.style.display = 'none';
+        userChip.style.display = 'none';
+      }
+    }
+
+    function openModal(){ overlay.classList.add('show'); overlay.setAttribute('aria-hidden','false'); mMin.focus(); }
+    function closeModal(){ overlay.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); }
+
+    loginBtn?.addEventListener('click', async () => { await supabase.auth.signInWithOAuth({ provider: 'discord' }); });
+    logoutBtn?.addEventListener('click', async () => { await supabase.auth.signOut(); await refreshAuthUI(); });
+
+    openModalBtn?.addEventListener('click', async () => {
+      const { data:{ session } } = await supabase.auth.getSession();
+      if(!session) { await supabase.auth.signInWithOAuth({ provider:'discord' }); return; }
+      openModal();
+    });
+    closeModalBtn?.addEventListener('click', closeModal);
+    overlay?.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+
+    modalSubmitBtn?.addEventListener('click', async () => {
+      const { data:{ session } } = await supabase.auth.getSession();
+      const user = session?.user; if(!user || !activeId) return;
+      const m = Math.max(0, parseInt(mMin.value||'0',10));
+      const s = Math.max(0, Math.min(59, parseInt(mSec.value||'0',10)));
+      const cs= Math.max(0, Math.min(99, parseInt(mCs.value||'0',10)));
+      const time_ms = m*60000 + s*1000 + cs*10;
+      const meta = user.user_metadata || {};
+      const name = meta.full_name || meta.name || 'Runner';
+      const avatar_url = meta.avatar_url || meta.picture || null;
+      const quote = (mQuote.value||'').trim() || null;
+
+      const { error } = await supabase.from('runs').insert({ game_id: activeId, time_ms, quote, user_id: user.id, name, avatar_url });
+      if(error){
+        alert('Failed to submit: ' + error.message);
+      } else {
+        mMin.value='0'; mSec.value='00'; mCs.value='00'; mQuote.value='';
+        closeModal();
+        await loadRunsForGame(activeId);
+      }
+    });
+
+    supabase.auth.onAuthStateChange((_event,_session)=>{ refreshAuthUI(); if(activeId) loadRunsForGame(activeId); });
+    sortSelect?.addEventListener('change', renderRuns);
+
+    // -------- Boot --------
+    renderSidebar();
+    if(GAMES.length) selectGame(GAMES[0].id);
+    refreshAuthUI();
+  })();
+  </script>
+</body>
+</html>
